@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+	<title></title>
+	<meta name="generator" content="LibreOffice 24.8.1.2 (Linux)"/>
+	<meta name="created" content="00:00:00"/>
+	<meta name="changed" content="00:00:00"/>
+	<style type="text/css">
+		@page { size: 8.27in 11.69in; margin: 0.79in }
+		p { line-height: 115%; margin-bottom: 0.1in; background: transparent }
+		pre { background: transparent }
+		pre.western { font-family: "Liberation Mono", monospace; font-size: 10pt }
+		pre.cjk { font-family: "NSimSun", monospace; font-size: 10pt }
+		pre.ctl { font-family: "Liberation Mono", monospace; font-size: 10pt }
+	</style>
+</head>
+<body lang="en-US" link="#000080" vlink="#800000" dir="ltr"><pre class="western">import React, { useState, useEffect, useRef } from 'react';
+import { 
+  User, BookOpen, Heart, DollarSign, MapPin, 
+  Clock, Activity, Users, Coffee, Bus, GraduationCap, 
+  Briefcase, Smile, Frown, AlertTriangle, Cat, HeartHandshake,
+  Ghost, Utensils, RotateCcw, Building
+} from 'lucide-react';
+
+// --- 1. Constants &amp; Game Data ---
+
+// <font face="NSimSun, monospace"><span lang="zh-CN">迷因頭像</span></font>
+const AVATARS = [
+  { id: 'smug', icon: '😼', name: '<font face="NSimSun, monospace"><span lang="zh-CN">自信</span></font>', desc: '<font face="NSimSun, monospace"><span lang="zh-CN">我就係要屈機</span></font>' },
+  { id: 'crying', icon: '😿', name: '<font face="NSimSun, monospace"><span lang="zh-CN">委屈</span></font>', desc: 'GPA...<font face="NSimSun, monospace"><span lang="zh-CN">不要再跌了</span></font>' },
+  { id: 'shocked', icon: '🙀', name: '<font face="NSimSun, monospace"><span lang="zh-CN">驚嚇</span></font>', desc: 'Deadlines?!' },
+  { id: 'love', icon: '😻', name: '<font face="NSimSun, monospace"><span lang="zh-CN">戀愛</span></font>', desc: '<font face="NSimSun, monospace"><span lang="zh-CN">想拍拖</span></font>...' },
+  { id: 'cool', icon: '😎', name: '<font face="NSimSun, monospace"><span lang="zh-CN">戴超</span></font>', desc: 'Soc<font face="NSimSun, monospace"><span lang="zh-CN">房我話事</span></font>' },
+  { id: 'sleepy', icon: '😴', name: '<font face="NSimSun, monospace"><span lang="zh-CN">眼瞓</span></font>', desc: '<font face="NSimSun, monospace"><span lang="zh-CN">早八不了</span></font>' },
+  { id: 'clown', icon: '🤡', name: '<font face="NSimSun, monospace"><span lang="zh-CN">小丑</span></font>', desc: '<font face="NSimSun, monospace"><span lang="zh-CN">又是當小丑的一天</span></font>' },
+  { id: 'devil', icon: '😈', name: '<font face="NSimSun, monospace"><span lang="zh-CN">惡魔</span></font>', desc: '<font face="NSimSun, monospace"><span lang="zh-CN">我要玩爛個</span></font>Grade' },
+];
+
+// <font face="NSimSun, monospace"><span lang="zh-CN">初始人際關係</span></font>
+const INITIAL_RELATIONSHIPS = [
+  { id: 'roommate', name: '<font face="NSimSun, monospace"><span lang="zh-CN">好心宿友</span></font>', level: 50, max: 100, desc: '<font face="NSimSun, monospace"><span lang="zh-CN">會幫你留門的好人</span></font>' },
+  { id: 'prof', name: '<font face="NSimSun, monospace"><span lang="zh-CN">嚴厲教授</span></font>', level: 30, max: 100, desc: '<font face="NSimSun, monospace"><span lang="zh-CN">掌握你</span></font>GPA<font face="NSimSun, monospace"><span lang="zh-CN">生殺大權</span></font>' },
+  { id: 'crush', name: '<font face="NSimSun, monospace"><span lang="zh-CN">心儀對象</span></font>', level: 10, max: 100, desc: '<font face="NSimSun, monospace"><span lang="zh-CN">可遠觀而不可褻玩</span></font>' },
+  { id: 'canteen_lady', name: '<font face="NSimSun, monospace"><span lang="zh-CN">飯堂阿姐</span></font>', level: 40, max: 100, desc: '<font face="NSimSun, monospace"><span lang="zh-CN">關係好會多給你兩塊肉</span></font>' },
+];
+
+const FACULTIES = [
+  { id: 'arts', name: '<font face="NSimSun, monospace"><span lang="zh-CN">文學院</span></font>', buff: 'social', description: '<font face="NSimSun, monospace"><span lang="zh-CN">氣質優雅，社交</span></font>+10', initStats: { energy: 90, stress: 10, knowledge: 10, social: 40 } },
+  { id: 'socsci', name: '<font face="NSimSun, monospace"><span lang="zh-CN">社科院</span></font>', buff: 'balanced', description: '<font face="NSimSun, monospace"><span lang="zh-CN">關心社會，平均型</span></font>', initStats: { energy: 95, stress: 15, knowledge: 20, social: 30 } },
+  { id: 'law', name: '<font face="NSimSun, monospace"><span lang="zh-CN">法律學院</span></font>', buff: 'knowledge', description: '<font face="NSimSun, monospace"><span lang="zh-CN">邏輯縝密，知識</span></font>+10', initStats: { energy: 85, stress: 30, knowledge: 40, social: 15 } },
+  { id: 'edu', name: '<font face="NSimSun, monospace"><span lang="zh-CN">教育學院</span></font>', buff: 'stamina', description: '<font face="NSimSun, monospace"><span lang="zh-CN">充滿熱誠，體力</span></font>+10', initStats: { energy: 100, stress: 10, knowledge: 20, social: 25 } },
+  { id: 'sci', name: '<font face="NSimSun, monospace"><span lang="zh-CN">理學院</span></font>', buff: 'logic', description: '<font face="NSimSun, monospace"><span lang="zh-CN">探索真理，知識高</span></font>', initStats: { energy: 90, stress: 20, knowledge: 35, social: 10 } },
+  { id: 'ba', name: '<font face="NSimSun, monospace"><span lang="zh-CN">商學院</span></font>', buff: 'money', description: '<font face="NSimSun, monospace"><span lang="zh-CN">商業頭腦，金錢</span></font>UP', initStats: { energy: 90, stress: 25, knowledge: 25, social: 35 } },
+  { id: 'eng', name: '<font face="NSimSun, monospace"><span lang="zh-CN">工程學院</span></font>', buff: 'tech', description: '<font face="NSimSun, monospace"><span lang="zh-CN">爆肝屬性，體力上限高</span></font>', initStats: { energy: 110, stress: 20, knowledge: 30, social: 5 } },
+  { id: 'med', name: '<font face="NSimSun, monospace"><span lang="zh-CN">醫學院</span></font>', buff: 'hardcore', description: '<font face="NSimSun, monospace"><span lang="zh-CN">精英中的精英，極高壓</span></font>', initStats: { energy: 80, stress: 40, knowledge: 50, social: 10 } },
+];
+
+// <font face="NSimSun, monospace"><span lang="zh-CN">更新地點：新增課室、辦公室、飯堂；移除新亞、聯合</span></font>
+const LOCATIONS = [
+  { id: 'dorm', name: '<font face="NSimSun, monospace"><span lang="zh-CN">學生宿舍</span></font>', color: 'bg-orange-100', description: '<font face="NSimSun, monospace"><span lang="zh-CN">你的溫暖小窩，適合休息和整理儀容。</span></font>', actions: ['rest', 'play_game', 'chat_roommate'] },
+  { id: 'mall', name: '<font face="NSimSun, monospace"><span lang="zh-CN">百萬大道</span></font>', color: 'bg-gray-200', description: '<font face="NSimSun, monospace"><span lang="zh-CN">校園心臟，</span></font>Dem Beat <font face="NSimSun, monospace"><span lang="zh-CN">聖地。</span></font>', actions: ['walk', 'dem_beat_practice', 'society_promotion'] },
+  { id: 'library', name: '<font face="NSimSun, monospace"><span lang="zh-CN">大學圖書館</span></font>', color: 'bg-blue-100', description: '<font face="NSimSun, monospace"><span lang="zh-CN">進修聖地 </span></font>(UL)<font face="NSimSun, monospace"><span lang="zh-CN">，考試期間充滿殺氣。</span></font>', actions: ['study', 'research', 'sleep_library'] },
+  { id: 'lake', name: '<font face="NSimSun, monospace"><span lang="zh-CN">未圓湖</span></font>', color: 'bg-green-100', description: '<font face="NSimSun, monospace"><span lang="zh-CN">崇基學院的美麗湖畔，適合拍拖。</span></font>', actions: ['date_walk', 'feed_birds', 'meditate'] }, 
+  { id: 'station', name: '<font face="NSimSun, monospace"><span lang="zh-CN">大學站</span></font>', color: 'bg-indigo-100', description: '<font face="NSimSun, monospace"><span lang="zh-CN">連接現實世界的出口。</span></font>', actions: ['part_time', 'shop', 'slacking'] },
+  // <font face="NSimSun, monospace"><span lang="zh-CN">新增地點</span></font>
+  { id: 'classroom', name: '<font face="NSimSun, monospace"><span lang="zh-CN">課室</span></font>', color: 'bg-emerald-100', description: '<font face="NSimSun, monospace"><span lang="zh-CN">學習與聆聽教授教誨的地方。</span></font>', actions: ['attend_class', 'sleep_class', 'social_group'] },
+  { id: 'prof_office', name: '<font face="NSimSun, monospace"><span lang="zh-CN">教授辦公室</span></font>', color: 'bg-purple-100', description: '<font face="NSimSun, monospace"><span lang="zh-CN">鼓起勇氣與教授面談，尋求指導。</span></font>', actions: ['ask_prof_guidance', 'submit_assignment'] },
+  { id: 'canteen', name: '<font face="NSimSun, monospace"><span lang="zh-CN">飯堂 </span></font>(<font face="NSimSun, monospace"><span lang="zh-CN">眾志堂</span></font>)', color: 'bg-orange-200', description: '<font face="NSimSun, monospace"><span lang="zh-CN">解決溫飽和認識新朋友的地方。</span></font>', actions: ['eat_canteen', 'gossip', 'eat_expensive'] },
+];
+
+// <font face="NSimSun, monospace"><span lang="zh-CN">更新行動資料庫：新增課程相關行動，並調整部分舊行動</span></font>
+const ACTIONS_DB = {
+  // <font face="NSimSun, monospace"><span lang="zh-CN">基礎生存</span></font>
+  rest: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">睡覺補眠</span></font>', energy: 40, stress: -20, knowledge: 0, social: 0, money: 0, time: 3, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你在床上睡得很香，精神飽滿！</span></font>' },
+  play_game: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">通宵打機</span></font>', energy: -10, stress: -20, knowledge: -2, social: 5, money: 0, time: 4, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">雖然黑眼圈加深了，但心情舒暢。</span></font>' },
+  
+  // <font face="NSimSun, monospace"><span lang="zh-CN">社交與人際</span></font>
+  chat_roommate: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">與宿友宵夜</span></font>', energy: 10, stress: -10, knowledge: 0, social: 10, money: -40, time: 2, npc: 'roommate', npcVal: 10, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你們聊了很多八卦，宿友對你好感度上升。</span></font>' },
+  society_promotion: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">上莊宣傳</span></font>', energy: -20, stress: 10, knowledge: 0, social: 20, money: 0, time: 3, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你大喊口號拉人入會，喉嚨都啞了。</span></font>' },
+  date_walk: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">湖邊散步</span></font>', energy: -10, stress: -15, knowledge: 0, social: 15, money: 0, time: 2, npc: 'crush', npcVal: 15, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">氣氛不錯，這就是青春嗎？</span></font>(<font face="NSimSun, monospace"><span lang="zh-CN">心儀對象好感</span></font>UP)' },
+  
+  // <font face="NSimSun, monospace"><span lang="zh-CN">學業</span></font>
+  study: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">溫習筆記</span></font>', energy: -15, stress: 10, knowledge: 15, social: -5, money: 0, time: 2, npc: 'prof', npcVal: 2, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你感到知識通過眼睛進入了大腦。</span></font>' },
+  research: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">趕 </span></font>Paper', energy: -25, stress: 25, knowledge: 25, social: -10, money: 0, time: 3, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">死線戰士出動！</span></font>' },
+  sleep_library: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">圖書館補眠</span></font>', energy: 15, stress: -5, knowledge: 2, social: -2, money: 0, time: 1, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">趴在書上睡特別香，還吸收了書本的精華？</span></font>' },
+  
+  // <font face="NSimSun, monospace"><span lang="zh-CN">特殊與休閒</span></font>
+  dem_beat_practice: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">練習 </span></font>Dem Beat', energy: -20, stress: 5, knowledge: 0, social: 15, money: 0, time: 2, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">搏盡無悔！山城精神！</span></font>' },
+  meditate: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">在湖邊沉思</span></font>', energy: 5, stress: -30, knowledge: 5, social: 0, money: 0, time: 1, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你在湖畔的長椅上沉思，內心平靜。</span></font>' }, // <font face="NSimSun, monospace"><span lang="zh-CN">調整描述</span></font>
+  
+  // <font face="NSimSun, monospace"><span lang="zh-CN">兼職與消費</span></font>
+  shop: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">超市入貨</span></font>', energy: 5, stress: -5, knowledge: 0, social: 0, money: -80, time: 1, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">買了一堆零食和杯麵。</span></font>' },
+  part_time: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">兼職補習</span></font>', energy: -25, stress: 15, knowledge: 2, social: 0, money: 250, time: 3, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">教小學生做功課，賺得盆滿缽滿。</span></font>' },
+  
+  // <font face="NSimSun, monospace"><span lang="zh-CN">其他</span></font>
+  walk: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">散步</span></font>', energy: -5, stress: -5, knowledge: 0, social: 0, money: 0, time: 1, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">走走逛逛。</span></font>' },
+  slacking: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">翹課</span></font>', energy: 10, stress: -10, knowledge: -5, social: 5, money: 0, time: 2, npc: 'prof', npcVal: -10, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">偷得浮生半日閒，但教授好像記住了你的名字</span></font>...' },
+  feed_birds: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">餵雀</span></font>', energy: -5, stress: -10, knowledge: 2, social: 0, money: -10, time: 1, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">未圓湖的鳥都被你餵胖了。</span></font>' },
+
+  // <font face="NSimSun, monospace"><span lang="zh-CN">飯堂行動</span></font>
+  eat_canteen: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">吃頹飯</span></font>', energy: 25, stress: 5, knowledge: 0, social: 0, money: -25, time: 1, npc: 'canteen_lady', npcVal: 5, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">阿姐今天心情好，多給了你一條菜。</span></font>' },
+  gossip: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">八卦是非</span></font>', energy: -5, stress: -10, knowledge: 0, social: 10, money: 0, time: 1, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你和朋友交換了最新的校園八卦，心情舒暢。</span></font>' },
+  eat_expensive: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">食好啲 </span></font>(<font face="NSimSun, monospace"><span lang="zh-CN">犒勞自己</span></font>)', energy: 35, stress: -15, knowledge: 0, social: 5, money: -120, time: 1, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">奢侈了一頓，心情和體力都大大提升！</span></font>' },
+
+  // <font face="NSimSun, monospace"><span lang="zh-CN">課室行動</span></font>
+  attend_class: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">上課聽講</span></font>', energy: -15, stress: 5, knowledge: 10, social: 0, money: 0, time: 2, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">雖然差點睡著，但至少聽懂了幾個概念。</span></font>' },
+  sleep_class: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">課堂補眠</span></font>', energy: 20, stress: -5, knowledge: -5, social: 0, money: 0, time: 2, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你把書立起來偷偷睡了一覺，精神好了，但錯過了重點。</span></font>' },
+  social_group: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">小組討論</span></font>', energy: -10, stress: 10, knowledge: 5, social: 10, money: 0, time: 2, npc: 'roommate', npcVal: 5, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你們在討論中找到了共識，小組關係更好了。</span></font>' },
+
+  // <font face="NSimSun, monospace"><span lang="zh-CN">教授辦公室行動</span></font>
+  ask_prof_guidance: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">請教教授</span></font>', energy: -10, stress: 15, knowledge: 20, social: 0, money: 0, time: 1, npc: 'prof', npcVal: 10, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">雖然有點緊張，但教授給你指點迷津，知識大增！</span></font>' },
+  submit_assignment: { label: '<font face="NSimSun, monospace"><span lang="zh-CN">提交功課</span></font>', energy: -5, stress: -25, knowledge: 5, social: 0, money: 0, time: 0, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">把文件夾投進了教授的信箱，壓力一掃而空！</span></font>' },
+};
+
+// --- Components ---
+
+export default function CUHKSimsLife() {
+  // Game State
+  const [screen, setScreen] = useState('intro'); 
+  const [player, setPlayer] = useState({ name: '', faculty: 'arts', avatar: 'smug' });
+  const [stats, setStats] = useState({ energy: 100, stress: 0, knowledge: 0, social: 0, money: 0 });
+  const [relationships, setRelationships] = useState(INITIAL_RELATIONSHIPS);
+  const [time, setTime] = useState({ day: 1, hour: 9 }); 
+  const [location, setLocation] = useState('dorm');
+  const [logs, setLogs] = useState([]);
+  const [popup, setPopup] = useState(null); 
+
+  const logsEndRef = useRef(null);
+
+  useEffect(() =&gt; {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  // Initial Money Randomizer
+  const generateMoney = (facultyId) =&gt; {
+    let base = Math.floor(Math.random() * 500) + 800; 
+    if (facultyId === 'ba') base += 800;
+    if (facultyId === 'arts') base -= 100;
+    return base;
+  };
+
+  const startGame = () =&gt; {
+    const facultyData = FACULTIES.find(f =&gt; f.id === player.faculty);
+    setStats({
+      ...facultyData.initStats,
+      money: generateMoney(player.faculty)
+    });
+    setLogs([`<font face="NSimSun, monospace"><span lang="zh-CN">歡迎來到 </span></font>CUHK<font face="NSimSun, monospace"><span lang="zh-CN">！你是</span></font>${facultyData.name}<font face="NSimSun, monospace"><span lang="zh-CN">的新生。好好規劃你的大學生活吧！</span></font>`]);
+    setScreen('game');
+  };
+
+  // <font face="NSimSun, monospace"><span lang="zh-CN">重置遊戲功能</span></font>
+  const resetGame = () =&gt; {
+    setScreen('intro');
+    setPlayer({ name: '', faculty: 'arts', avatar: 'smug' });
+    setStats({ energy: 100, stress: 0, knowledge: 0, social: 0, money: 0 });
+    setRelationships(INITIAL_RELATIONSHIPS);
+    setTime({ day: 1, hour: 9 });
+    setLogs([]);
+    setLocation('dorm');
+    setPopup(null);
+  };
+
+  // Helper
+  const formatTime = (h) =&gt; {
+    const period = h &gt;= 12 ? 'PM' : 'AM';
+    const displayH = h &gt; 12 ? h - 12 : h;
+    return `${displayH}:00 ${period}`;
+  };
+
+  const addLog = (msg) =&gt; {
+    setLogs(prev =&gt; [...prev, `[D${time.day} ${formatTime(time.hour)}] ${msg}`]);
+  };
+
+  // Relationship Helper
+  const updateRelationship = (npcId, value) =&gt; {
+    if (!npcId) return;
+    setRelationships(prev =&gt; prev.map(r =&gt; {
+      if (r.id === npcId) {
+        const newVal = Math.min(r.max, Math.max(0, r.level + value));
+        let changeMsg = '';
+        if (value &gt; 0) changeMsg = ` (${r.name} <font face="NSimSun, monospace"><span lang="zh-CN">好感 </span></font>+${value})`;
+        else if (value &lt; 0) changeMsg = ` (${r.name} <font face="NSimSun, monospace"><span lang="zh-CN">好感 </span></font>${value})`;
+        if (changeMsg) addLog(changeMsg);
+        return { ...r, level: newVal };
+      }
+      return r;
+    }));
+  };
+
+  const triggerRandomEvent = () =&gt; {
+    const chance = Math.random();
+    if (chance &gt; 0.35) return; 
+
+    const events = [
+      { 
+        title: '<font face="NSimSun, monospace"><span lang="zh-CN">突發 </span></font>Dem Beat!', 
+        icon: &lt;Users size={32} /&gt;,
+        desc: '<font face="NSimSun, monospace"><span lang="zh-CN">路過百萬大道，突然被一班穿著系</span></font>Tee<font face="NSimSun, monospace"><span lang="zh-CN">的人圍住大叫口號！</span></font>',
+        choices: [
+          { text: '<font face="NSimSun, monospace"><span lang="zh-CN">一起叫！</span></font>', effect: { social: 15, stress: 5, energy: -10 }, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你大叫「黑大黑大中大！」，雖然很累但很爽。</span></font>' },
+          { text: '<font face="NSimSun, monospace"><span lang="zh-CN">尷尬逃跑</span></font>', effect: { social: -5, stress: 10 }, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你低頭快速走過，覺得社恐發作。</span></font>' }
+        ]
+      },
+      { 
+        title: '<font face="NSimSun, monospace"><span lang="zh-CN">猴子搶劫</span></font>', 
+        icon: &lt;Ghost size={32} /&gt;,
+        desc: '<font face="NSimSun, monospace"><span lang="zh-CN">一隻兇猛的猴子盯上了你手中的三文治！</span></font>',
+        choices: [
+          { text: '<font face="NSimSun, monospace"><span lang="zh-CN">棄食保命</span></font>', effect: { money: -20, energy: -10 }, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">猴子拿走了食物，你餓著肚子離開了。</span></font>' },
+          { text: '<font face="NSimSun, monospace"><span lang="zh-CN">與猴子決鬥</span></font>', effect: { stress: 20, energy: -15 }, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你成功嚇退了猴子，但差點被抓傷。</span></font>' }
+        ]
+      },
+      { 
+        title: '<font face="NSimSun, monospace"><span lang="zh-CN">校巴滿座</span></font>', 
+        icon: &lt;Bus size={32} /&gt;,
+        desc: '<font face="NSimSun, monospace"><span lang="zh-CN">轉堂時間，校巴站排了長長的人龍。</span></font>',
+        choices: [
+          { text: '<font face="NSimSun, monospace"><span lang="zh-CN">行路上山</span></font>', effect: { energy: -20, stress: 5 }, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你爬坡爬到懷疑人生，這就是「中大山城」！</span></font>' },
+          { text: '<font face="NSimSun, monospace"><span lang="zh-CN">等下一班</span></font>', effect: { time: 1, stress: -5 }, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你決定慢慢等，雖然遲到了，但心情平靜。</span></font>' }
+        ]
+      },
+      {
+        title: 'Add Drop <font face="NSimSun, monospace"><span lang="zh-CN">戰爭</span></font>',
+        icon: &lt;Activity size={32} /&gt;,
+        desc: '<font face="NSimSun, monospace"><span lang="zh-CN">今天是 </span></font>Add Drop <font face="NSimSun, monospace"><span lang="zh-CN">最後一天，系統非常卡！</span></font>',
+        choices: [
+          { text: '<font face="NSimSun, monospace"><span lang="zh-CN">瘋狂 </span></font>F5', effect: { stress: 15, knowledge: 5 }, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你終於搶到了心儀的通識課 </span></font>(GE)<font face="NSimSun, monospace"><span lang="zh-CN">！</span></font>' },
+          { text: '<font face="NSimSun, monospace"><span lang="zh-CN">隨緣吧</span></font>', effect: { stress: -5 }, msg: '<font face="NSimSun, monospace"><span lang="zh-CN">你放棄了掙扎，選了剩下的課。</span></font>' }
+        ]
+      }
+    ];
+
+    const randomEvent = events[Math.floor(Math.random() * events.length)];
+    setPopup(randomEvent);
+  };
+
+  const handleAction = (actionKey) =&gt; {
+    const action = ACTIONS_DB[actionKey];
+    
+    // 1. <font face="NSimSun, monospace"><span lang="zh-CN">檢查金錢</span></font>
+    if (stats.money + action.money &lt; 0) {
+      addLog('<font face="NSimSun, monospace"><span lang="zh-CN">你的錢不夠了！這就是貧窮大學生的悲哀</span></font>...');
+      return;
+    }
+    
+    // 2. <font face="NSimSun, monospace"><span lang="zh-CN">檢查體力並判斷是否 </span></font>Game Over
+    const newEnergy = stats.energy + action.energy;
+    if (newEnergy &lt;= 0) {
+      // <font face="NSimSun, monospace"><span lang="zh-CN">仍然應用其他狀態的變化，但體力歸零或負數</span></font>
+      setStats(prev =&gt; ({
+          energy: Math.min(120, Math.max(0, newEnergy)), 
+          stress: Math.max(0, prev.stress + action.stress),
+          knowledge: Math.min(100, prev.knowledge + action.knowledge),
+          social: Math.min(100, prev.social + action.social),
+          money: prev.money + action.money
+      }));
+      addLog(`🚨 <font face="NSimSun, monospace"><span lang="zh-CN">體力完全透支 </span></font>(${action.energy &gt; 0 ? '+' : ''}${action.energy})<font face="NSimSun, monospace"><span lang="zh-CN">，你倒下了！</span></font>`);
+      setScreen('gameover');
+      return;
+    }
+
+    // 3. <font face="NSimSun, monospace"><span lang="zh-CN">應用所有狀態的變化</span></font>
+    setStats(prev =&gt; ({
+      energy: Math.min(120, Math.max(0, newEnergy)),
+      stress: Math.max(0, prev.stress + action.stress),
+      knowledge: Math.min(100, prev.knowledge + action.knowledge),
+      social: Math.min(100, prev.social + action.social),
+      money: prev.money + action.money
+    }));
+
+    if (action.npc) {
+      updateRelationship(action.npc, action.npcVal);
+    }
+
+    let newHour = time.hour + action.time;
+    let newDay = time.day;
+    
+    addLog(action.msg);
+
+    // <font face="NSimSun, monospace"><span lang="zh-CN">處理時間跳轉</span></font>
+    if (newHour &gt;= 24) {
+      newHour = 9; 
+      newDay += 1;
+      addLog('=== <font face="NSimSun, monospace"><span lang="zh-CN">熬夜不好喔，新的一天開始！ </span></font>===');
+      // <font face="NSimSun, monospace"><span lang="zh-CN">輕微恢復體力和減壓</span></font>
+      setStats(prev =&gt; ({ ...prev, energy: Math.min(120, prev.energy + 40), stress: Math.max(0, prev.stress - 15) }));
+    }
+
+    setTime({ day: newDay, hour: newHour });
+
+    triggerRandomEvent();
+  };
+
+  const handleMove = (locId) =&gt; {
+    if (locId === location) return;
+    
+    const costEnergy = 5;
+    const costTime = 1;
+
+    if (stats.energy &lt; costEnergy) {
+      addLog('<font face="NSimSun, monospace"><span lang="zh-CN">太累了，走不動，移動失敗</span></font>...');
+      return;
+    }
+
+    setStats(prev =&gt; ({ ...prev, energy: prev.energy - costEnergy }));
+    
+    let newHour = time.hour + costTime;
+    let newDay = time.day;
+
+    if (newHour &gt;= 24) {
+        newHour = 9; 
+        newDay += 1;
+        addLog('<font face="NSimSun, monospace"><span lang="zh-CN">行路行到天光</span></font>... (<font face="NSimSun, monospace"><span lang="zh-CN">體力恢復少許</span></font>)');
+        setStats(prev =&gt; ({ ...prev, energy: prev.energy + 20 }));
+    } 
+
+    setTime({ day: newDay, hour: newHour });
+    setLocation(locId);
+    addLog(`<font face="NSimSun, monospace"><span lang="zh-CN">移動到了 </span></font>${LOCATIONS.find(l =&gt; l.id === locId).name}<font face="NSimSun, monospace"><span lang="zh-CN">。</span></font>`);
+    triggerRandomEvent();
+  };
+
+  const handleEventChoice = (choice) =&gt; {
+    // <font face="NSimSun, monospace"><span lang="zh-CN">檢查事件選擇會否導致 </span></font>Game Over
+    const newEnergy = stats.energy + (choice.effect.energy || 0);
+    if (newEnergy &lt;= 0) {
+      // <font face="NSimSun, monospace"><span lang="zh-CN">體力透支</span></font>
+       setStats(prev =&gt; ({
+          energy: 0, 
+          stress: prev.stress + (choice.effect.stress || 0),
+          knowledge: prev.knowledge + (choice.effect.knowledge || 0),
+          social: prev.social + (choice.effect.social || 0),
+          money: prev.money + (choice.effect.money || 0)
+      }));
+      addLog(`🚨 <font face="NSimSun, monospace"><span lang="zh-CN">事件結果導致體力透支，遊戲結束！</span></font>`);
+      setPopup(null);
+      setScreen('gameover');
+      return;
+    }
+    
+    setStats(prev =&gt; ({
+      energy: Math.min(120, Math.max(0, newEnergy)),
+      stress: prev.stress + (choice.effect.stress || 0),
+      knowledge: prev.knowledge + (choice.effect.knowledge || 0),
+      social: prev.social + (choice.effect.social || 0),
+      money: prev.money + (choice.effect.money || 0),
+    }));
+    
+    if (choice.effect.time) {
+        let newHour = time.hour + choice.effect.time;
+         if (newHour &gt;= 24) {
+            newHour = 9; 
+            setTime(prev =&gt; ({ day: prev.day + 1, hour: newHour }));
+        } else {
+            setTime(prev =&gt; ({ ...prev, hour: newHour }));
+        }
+    }
+
+    addLog(choice.msg);
+    setPopup(null);
+  };
+
+  // --- Screens ---
+
+  // 1. Intro Screen
+  if (screen === 'intro') {
+    return (
+      &lt;div className=&quot;min-h-screen bg-indigo-900 flex flex-col items-center justify-center text-white p-6 font-sans relative overflow-hidden&quot;&gt;
+        &lt;div className=&quot;absolute top-10 right-10 opacity-20&quot;&gt;&lt;Building size={120} /&gt;&lt;/div&gt;
+        &lt;div className=&quot;absolute bottom-10 left-10 opacity-20&quot;&gt;&lt;GraduationCap size={120} /&gt;&lt;/div&gt;
+        
+        &lt;div className=&quot;bg-white/10 backdrop-blur-md p-8 rounded-3xl shadow-2xl border border-white/20 text-center max-w-lg animate-fade-in-up&quot;&gt;
+          &lt;div className=&quot;flex justify-center mb-4 text-yellow-300&quot;&gt;
+             &lt;GraduationCap size={64} className=&quot;animate-bounce&quot; /&gt;
+          &lt;/div&gt;
+          &lt;h1 className=&quot;text-5xl font-black mb-2 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-pink-300&quot;&gt;
+            <font face="NSimSun, monospace"><span lang="zh-CN">中大模擬人生</span></font>
+          &lt;/h1&gt;
+          &lt;h2 className=&quot;text-2xl font-bold text-indigo-200 mb-6&quot;&gt;<font face="NSimSun, monospace"><span lang="zh-CN">大學生活體驗版</span></font>&lt;/h2&gt;
+          
+          &lt;p className=&quot;text-indigo-100 mb-8 leading-relaxed&quot;&gt;
+            <font face="NSimSun, monospace"><span lang="zh-CN">歡迎來到山城！化身為大學生，</span></font>
+            <font face="NSimSun, monospace"><span lang="zh-CN">在百萬大道打卡，在圖書館趕 </span></font>Due<font face="NSimSun, monospace"><span lang="zh-CN">，</span></font>
+            <font face="NSimSun, monospace"><span lang="zh-CN">還要小心不要被猴子搶走午餐！</span></font>
+          &lt;/p&gt;
+          
+          &lt;button 
+            onClick={() =&gt; setScreen('create')}
+            className=&quot;w-full bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white font-black py-4 px-8 rounded-2xl shadow-lg transition transform hover:scale-105 hover:shadow-xl flex items-center justify-center gap-2&quot;
+          &gt;
+            &lt;Smile size={24} /&gt; <font face="NSimSun, monospace"><span lang="zh-CN">開始入學</span></font>
+          &lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    );
+  }
+
+  // 2. Character Creation
+  if (screen === 'create') {
+    return (
+      &lt;div className=&quot;min-h-screen bg-indigo-50 flex items-center justify-center p-4 font-sans&quot;&gt;
+        &lt;div className=&quot;bg-white p-6 md:p-8 rounded-3xl shadow-xl w-full max-w-4xl flex flex-col md:flex-row gap-8&quot;&gt;
+          
+          {/* Left: Input &amp; Avatar */}
+          &lt;div className=&quot;flex-1 space-y-6&quot;&gt;
+            &lt;h2 className=&quot;text-3xl font-black text-indigo-900&quot;&gt;<font face="NSimSun, monospace"><span lang="zh-CN">入學註冊 📝</span></font>&lt;/h2&gt;
+            
+            &lt;div&gt;
+              &lt;label className=&quot;block text-gray-700 font-bold mb-2&quot;&gt;<font face="NSimSun, monospace"><span lang="zh-CN">你的名字</span></font>&lt;/label&gt;
+              &lt;input 
+                type=&quot;text&quot; 
+                className=&quot;w-full bg-gray-50 border-2 border-gray-200 p-3 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition text-lg&quot;
+                value={player.name}
+                onChange={(e) =&gt; setPlayer({...player, name: e.target.value})}
+                placeholder=&quot;<font face="NSimSun, monospace"><span lang="zh-CN">輸入名字</span></font>&quot;
+              /&gt;
+            &lt;/div&gt;
+
+            &lt;div&gt;
+              &lt;label className=&quot;block text-gray-700 font-bold mb-3&quot;&gt;<font face="NSimSun, monospace"><span lang="zh-CN">選擇你的心情頭像</span></font>&lt;/label&gt;
+              &lt;div className=&quot;grid grid-cols-4 gap-2&quot;&gt;
+                {AVATARS.map(avatar =&gt; (
+                  &lt;button
+                    key={avatar.id}
+                    onClick={() =&gt; setPlayer({...player, avatar: avatar.id})}
+                    className={`aspect-square rounded-2xl border-2 flex flex-col items-center justify-center transition relative overflow-hidden ${
+                      player.avatar === avatar.id 
+                        ? 'border-indigo-500 bg-indigo-50 shadow-inner' 
+                        : 'border-gray-200 hover:border-indigo-300 hover:bg-white'
+                    }`}
+                  &gt;
+                    &lt;span className=&quot;text-3xl mb-1&quot;&gt;{avatar.icon}&lt;/span&gt;
+                    &lt;span className=&quot;text-[10px] font-bold text-gray-600 text-center leading-tight px-1&quot;&gt;{avatar.name}&lt;/span&gt;
+                    {player.avatar === avatar.id &amp;&amp; (
+                        &lt;div className=&quot;absolute top-1 right-1 w-2 h-2 bg-indigo-500 rounded-full&quot;&gt;&lt;/div&gt;
+                    )}
+                  &lt;/button&gt;
+                ))}
+              &lt;/div&gt;
+              &lt;p className=&quot;text-xs text-gray-500 mt-2 text-center bg-gray-100 p-2 rounded-lg&quot;&gt;
+                {AVATARS.find(a =&gt; a.id === player.avatar)?.desc}
+              &lt;/p&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+
+          {/* Right: Faculty Selection */}
+          &lt;div className=&quot;flex-1 flex flex-col&quot;&gt;
+            &lt;label className=&quot;block text-gray-700 font-bold mb-3&quot;&gt;<font face="NSimSun, monospace"><span lang="zh-CN">選擇學院</span></font>&lt;/label&gt;
+            &lt;div className=&quot;grid grid-cols-1 gap-2 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar flex-1&quot;&gt;
+              {FACULTIES.map(f =&gt; (
+                &lt;button
+                  key={f.id}
+                  onClick={() =&gt; setPlayer({...player, faculty: f.id})}
+                  className={`p-4 rounded-xl border-2 text-left transition flex items-start gap-3 ${
+                    player.faculty === f.id 
+                      ? 'border-indigo-500 bg-indigo-50' 
+                      : 'border-gray-100 hover:border-indigo-200 bg-white'
+                  }`}
+                &gt;
+                  &lt;div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${player.faculty === f.id ? 'bg-indigo-200 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}&gt;
+                    &lt;GraduationCap size={20} /&gt;
+                  &lt;/div&gt;
+                  &lt;div&gt;
+                    &lt;div className=&quot;font-bold text-gray-800 text-lg&quot;&gt;{f.name}&lt;/div&gt;
+                    &lt;div className=&quot;text-xs text-gray-500 font-medium&quot;&gt;{f.description}&lt;/div&gt;
+                  &lt;/div&gt;
+                &lt;/button&gt;
+              ))}
+            &lt;/div&gt;
+            
+            &lt;button 
+              disabled={!player.name}
+              onClick={startGame}
+              className={`mt-6 w-full font-bold py-4 rounded-2xl shadow-lg transition transform active:scale-95 ${
+                player.name 
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-xl' 
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              }`}
+            &gt;
+              <font face="NSimSun, monospace"><span lang="zh-CN">確認入學 →</span></font>
+            &lt;/button&gt;
+          &lt;/div&gt;
+
+        &lt;/div&gt;
+      &lt;/div&gt;
+    );
+  }
+
+  // 3. Game Over Screen
+  if (screen === 'gameover') {
+    return (
+      &lt;div className=&quot;min-h-screen bg-gray-900 flex flex-col items-center justify-center text-white p-6 font-sans&quot;&gt;
+        &lt;div className=&quot;bg-gray-800 p-8 rounded-3xl shadow-2xl max-w-md w-full text-center border border-gray-700&quot;&gt;
+            &lt;div className=&quot;mb-6 animate-pulse&quot;&gt;
+                &lt;span className=&quot;text-6xl&quot;&gt;💀&lt;/span&gt;
+            &lt;/div&gt;
+            &lt;h1 className=&quot;text-3xl font-black mb-2 text-red-400&quot;&gt;<font face="NSimSun, monospace"><span lang="zh-CN">體力透支 </span></font>(Game Over)&lt;/h1&gt;
+            &lt;p className=&quot;text-gray-300 mb-8&quot;&gt;
+            <font face="NSimSun, monospace"><span lang="zh-CN">你在回宿舍的斜坡上倒下了</span></font>...&lt;br/&gt;
+            <font face="NSimSun, monospace"><span lang="zh-CN">被好心的宿友抬進了救護車。</span></font>
+            &lt;/p&gt;
+            
+            &lt;div className=&quot;bg-gray-900/50 p-4 rounded-2xl mb-8 text-left space-y-2&quot;&gt;
+            &lt;h3 className=&quot;font-bold text-gray-400 text-xs uppercase tracking-wider mb-2&quot;&gt;<font face="NSimSun, monospace"><span lang="zh-CN">你的成績單</span></font>&lt;/h3&gt;
+            &lt;div className=&quot;flex justify-between&quot;&gt;&lt;span&gt;<font face="NSimSun, monospace"><span lang="zh-CN">存活天數</span></font>&lt;/span&gt; &lt;span className=&quot;font-mono text-yellow-400&quot;&gt;{time.day} <font face="NSimSun, monospace"><span lang="zh-CN">天</span></font>&lt;/span&gt;&lt;/div&gt;
+            &lt;div className=&quot;flex justify-between&quot;&gt;&lt;span&gt;<font face="NSimSun, monospace"><span lang="zh-CN">知識積累</span></font>&lt;/span&gt; &lt;span className=&quot;font-mono text-blue-400&quot;&gt;{stats.knowledge}&lt;/span&gt;&lt;/div&gt;
+            &lt;div className=&quot;flex justify-between&quot;&gt;&lt;span&gt;<font face="NSimSun, monospace"><span lang="zh-CN">社交指數</span></font>&lt;/span&gt; &lt;span className=&quot;font-mono text-pink-400&quot;&gt;{stats.social}&lt;/span&gt;&lt;/div&gt;
+            &lt;div className=&quot;flex justify-between&quot;&gt;&lt;span&gt;<font face="NSimSun, monospace"><span lang="zh-CN">剩餘私房錢</span></font>&lt;/span&gt; &lt;span className=&quot;font-mono text-green-400&quot;&gt;${stats.money}&lt;/span&gt;&lt;/div&gt;
+            &lt;/div&gt;
+
+            &lt;button 
+            onClick={resetGame}
+            className=&quot;w-full bg-white text-gray-900 font-bold py-3 px-8 rounded-xl hover:bg-gray-200 transition&quot;
+            &gt;
+            <font face="NSimSun, monospace"><span lang="zh-CN">重新開始</span></font>
+            &lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    );
+  }
+
+  // 4. Main Game Loop
+  const currentLocData = LOCATIONS.find(l =&gt; l.id === location);
+  const currentAvatar = AVATARS.find(a =&gt; a.id === player.avatar);
+
+  return (
+    &lt;div className=&quot;min-h-screen bg-indigo-50 flex flex-col font-sans text-slate-800&quot;&gt;
+      
+      {/* Top Bar */}
+      &lt;div className=&quot;bg-white/80 backdrop-blur-md shadow-sm p-3 sticky top-0 z-20 border-b border-indigo-100&quot;&gt;
+        &lt;div className=&quot;max-w-6xl mx-auto flex flex-col md:flex-row gap-4 items-center justify-between&quot;&gt;
+          
+          {/* Player Info */}
+          &lt;div className=&quot;flex items-center justify-between w-full md:w-auto gap-4&quot;&gt;
+              &lt;div className=&quot;flex items-center gap-3 bg-indigo-50 px-4 py-2 rounded-full&quot;&gt;
+                &lt;span className=&quot;text-2xl bg-white rounded-full p-1 shadow-sm&quot; role=&quot;img&quot; aria-label=&quot;avatar&quot;&gt;{currentAvatar?.icon}&lt;/span&gt;
+                &lt;div&gt;
+                  &lt;div className=&quot;font-bold text-indigo-900 leading-none&quot;&gt;{player.name}&lt;/div&gt;
+                  &lt;div className=&quot;text-[10px] text-indigo-500 font-bold mt-1 uppercase tracking-wide&quot;&gt;
+                    {FACULTIES.find(f =&gt; f.id === player.faculty).name} YEAR 1
+                  &lt;/div&gt;
+                &lt;/div&gt;
+              &lt;/div&gt;
+              
+              {/* Reset Button (Mobile/Desktop) */}
+              &lt;button 
+                onClick={resetGame}
+                className=&quot;md:hidden p-2 text-gray-500 hover:text-red-500 bg-gray-100 rounded-full&quot;
+                title=&quot;<font face="NSimSun, monospace"><span lang="zh-CN">重新開始</span></font>&quot;
+              &gt;
+                &lt;RotateCcw size={18} /&gt;
+              &lt;/button&gt;
+          &lt;/div&gt;
+
+          {/* Stats Grid */}
+          &lt;div className=&quot;flex-1 grid grid-cols-4 gap-2 w-full&quot;&gt;
+            &lt;StatBar icon={&lt;Activity size={14} /&gt;} label=&quot;<font face="NSimSun, monospace"><span lang="zh-CN">體力</span></font>&quot; value={stats.energy} color=&quot;bg-rose-500&quot; track=&quot;bg-rose-100&quot; max={120} /&gt;
+            &lt;StatBar icon={&lt;Frown size={14} /&gt;} label=&quot;<font face="NSimSun, monospace"><span lang="zh-CN">壓力</span></font>&quot; value={stats.stress} color=&quot;bg-slate-600&quot; track=&quot;bg-slate-200&quot; isBad max={100} /&gt;
+            &lt;StatBar icon={&lt;BookOpen size={14} /&gt;} label=&quot;<font face="NSimSun, monospace"><span lang="zh-CN">知識</span></font>&quot; value={stats.knowledge} color=&quot;bg-sky-500&quot; track=&quot;bg-sky-100&quot; max={100} /&gt;
+            &lt;StatBar icon={&lt;Users size={14} /&gt;} label=&quot;<font face="NSimSun, monospace"><span lang="zh-CN">社交</span></font>&quot; value={stats.social} color=&quot;bg-amber-500&quot; track=&quot;bg-amber-100&quot; max={100} /&gt;
+          &lt;/div&gt;
+
+          {/* Time &amp; Money &amp; Reset */}
+          &lt;div className=&quot;flex items-center gap-3 text-sm font-bold w-full md:w-auto justify-end&quot;&gt;
+             &lt;div className=&quot;flex items-center text-indigo-600 bg-indigo-50 px-3 py-1 rounded-lg&quot;&gt;
+                &lt;Clock size={16} className=&quot;mr-2&quot; /&gt;
+                D{time.day} {formatTime(time.hour)}
+            &lt;/div&gt;
+            &lt;div className=&quot;flex items-center text-emerald-600 bg-emerald-50 px-3 py-1 rounded-lg&quot;&gt;
+                &lt;DollarSign size={16} className=&quot;mr-1&quot; /&gt;
+                {stats.money}
+            &lt;/div&gt;
+            
+             {/* Reset Button (Desktop) */}
+             &lt;button 
+                onClick={resetGame}
+                className=&quot;hidden md:flex items-center gap-1 px-3 py-1 text-xs text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition&quot;
+                title=&quot;<font face="NSimSun, monospace"><span lang="zh-CN">重新開始</span></font>&quot;
+              &gt;
+                &lt;RotateCcw size={14} /&gt; 
+                <font face="NSimSun, monospace"><span lang="zh-CN">重新開始</span></font>
+              &lt;/button&gt;
+          &lt;/div&gt;
+
+        &lt;/div&gt;
+      &lt;/div&gt;
+
+      &lt;div className=&quot;flex-1 max-w-6xl mx-auto w-full p-4 grid grid-cols-1 lg:grid-cols-12 gap-6&quot;&gt;
+        
+        {/* Left Column: Navigation &amp; Relationships (3 cols) */}
+        &lt;div className=&quot;lg:col-span-3 space-y-4 flex flex-col&quot;&gt;
+            
+            {/* Minimap */}
+            &lt;div className=&quot;bg-white p-4 rounded-3xl shadow-sm border border-indigo-50&quot;&gt;
+                &lt;h3 className=&quot;font-black text-gray-400 text-xs uppercase mb-3 flex items-center tracking-wider&quot;&gt;
+                    &lt;MapPin size={14} className=&quot;mr-1&quot;/&gt; <font face="NSimSun, monospace"><span lang="zh-CN">地圖導航</span></font>
+                &lt;/h3&gt;
+                &lt;div className=&quot;space-y-2&quot;&gt;
+                    {LOCATIONS.map(loc =&gt; (
+                        &lt;button
+                            key={loc.id}
+                            disabled={location === loc.id}
+                            onClick={() =&gt; handleMove(loc.id)}
+                            className={`w-full text-sm py-3 px-4 rounded-xl text-left transition flex items-center justify-between font-bold ${
+                                location === loc.id 
+                                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200 transform scale-105' 
+                                : 'bg-gray-50 hover:bg-white hover:shadow-md text-gray-600'
+                            }`}
+                        &gt;
+                            &lt;span&gt;{loc.name}&lt;/span&gt;
+                            {location === loc.id &amp;&amp; &lt;div className=&quot;w-2 h-2 bg-white rounded-full animate-pulse&quot;&gt;&lt;/div&gt;}
+                        &lt;/button&gt;
+                    ))}
+                &lt;/div&gt;
+            &lt;/div&gt;
+
+            {/* Relationships Panel */}
+            &lt;div className=&quot;bg-white p-4 rounded-3xl shadow-sm border border-indigo-50 flex-1&quot;&gt;
+                &lt;h3 className=&quot;font-black text-gray-400 text-xs uppercase mb-3 flex items-center tracking-wider&quot;&gt;
+                    &lt;HeartHandshake size={14} className=&quot;mr-1&quot;/&gt; <font face="NSimSun, monospace"><span lang="zh-CN">人際關係</span></font>
+                &lt;/h3&gt;
+                &lt;div className=&quot;space-y-4&quot;&gt;
+                    {relationships.map(npc =&gt; (
+                        &lt;div key={npc.id} className=&quot;group&quot;&gt;
+                            &lt;div className=&quot;flex justify-between items-end mb-1&quot;&gt;
+                                &lt;span className=&quot;text-sm font-bold text-gray-700&quot;&gt;{npc.name}&lt;/span&gt;
+                                &lt;span className=&quot;text-xs text-gray-400&quot;&gt;{npc.level}/100&lt;/span&gt;
+                            &lt;/div&gt;
+                            &lt;div className=&quot;w-full bg-gray-100 rounded-full h-2 mb-1 overflow-hidden&quot;&gt;
+                                &lt;div 
+                                    className={`h-full rounded-full transition-all duration-700 ${
+                                        npc.level &gt; 80 ? 'bg-pink-500' : 
+                                        npc.level &gt; 50 ? 'bg-indigo-400' : 'bg-gray-400'
+                                    }`} 
+                                    style={{ width: `${npc.level}%` }}
+                                &gt;&lt;/div&gt;
+                            &lt;/div&gt;
+                            &lt;p className=&quot;text-[10px] text-gray-400 group-hover:text-indigo-500 transition-colors truncate&quot;&gt;
+                                {npc.desc}
+                            &lt;/p&gt;
+                        &lt;/div&gt;
+                    ))}
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        {/* Center Column: Main Action Area (6 cols) */}
+        &lt;div className=&quot;lg:col-span-6 flex flex-col&quot;&gt;
+            &lt;div className=&quot;bg-white rounded-3xl shadow-xl overflow-hidden min-h-[500px] flex flex-col border-4 border-white ring-4 ring-indigo-50 transition-all&quot;&gt;
+                {/* Header */}
+                &lt;div className={`${currentLocData.color} p-8 text-indigo-900 relative overflow-hidden`}&gt;
+                    &lt;div className=&quot;relative z-10&quot;&gt;
+                        &lt;h2 className=&quot;text-3xl font-black flex items-center mb-2&quot;&gt;
+                            {currentLocData.name}
+                        &lt;/h2&gt;
+                        &lt;p className=&quot;text-indigo-800/70 font-medium&quot;&gt;{currentLocData.description}&lt;/p&gt;
+                    &lt;/div&gt;
+                    {/* Decorative Circles */}
+                    &lt;div className=&quot;absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white/20 rounded-full blur-2xl&quot;&gt;&lt;/div&gt;
+                    &lt;div className=&quot;absolute bottom-0 left-0 -mb-10 -ml-10 w-24 h-24 bg-white/30 rounded-full blur-xl&quot;&gt;&lt;/div&gt;
+                &lt;/div&gt;
+
+                {/* Content */}
+                &lt;div className=&quot;p-6 flex-1 bg-white relative&quot;&gt;
+                    &lt;h3 className=&quot;font-bold text-gray-400 text-xs uppercase mb-4 tracking-wider&quot;&gt;<font face="NSimSun, monospace"><span lang="zh-CN">可執行行動</span></font>&lt;/h3&gt;
+                    &lt;div className=&quot;grid grid-cols-1 sm:grid-cols-2 gap-4&quot;&gt;
+                        {currentLocData.actions.map(actionKey =&gt; {
+                            const action = ACTIONS_DB[actionKey];
+                            return (
+                                &lt;button
+                                    key={actionKey}
+                                    onClick={() =&gt; handleAction(actionKey)}
+                                    className=&quot;bg-gray-50 p-5 rounded-2xl border-2 border-transparent hover:border-indigo-500 hover:bg-white hover:shadow-xl transition-all duration-300 flex flex-col items-start text-left group&quot;
+                                &gt;
+                                    &lt;span className=&quot;font-bold text-lg text-gray-800 group-hover:text-indigo-600 mb-2 w-full border-b border-gray-200 pb-2 group-hover:border-indigo-100&quot;&gt;
+                                        {action.label}
+                                    &lt;/span&gt;
+                                    
+                                    &lt;div className=&quot;w-full space-y-2&quot;&gt;
+                                      &lt;div className=&quot;flex flex-wrap gap-2 text-xs font-medium&quot;&gt;
+                                          {action.energy !== 0 &amp;&amp; &lt;span className={`px-2 py-1 rounded-md ${action.energy &lt; 0 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}&gt;⚡ {action.energy}&lt;/span&gt;}
+                                          {action.stress !== 0 &amp;&amp; &lt;span className={`px-2 py-1 rounded-md ${action.stress &gt; 0 ? 'bg-gray-200 text-gray-600' : 'bg-blue-100 text-blue-600'}`}&gt;😓 {action.stress &gt; 0 ? '+' : ''}{action.stress}&lt;/span&gt;}
+                                          {action.money !== 0 &amp;&amp; &lt;span className={`px-2 py-1 rounded-md ${action.money &lt; 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-600'}`}&gt;💰 {action.money}&lt;/span&gt;}
+                                          {action.time !== 0 &amp;&amp; &lt;span className=&quot;px-2 py-1 rounded-md bg-indigo-50 text-indigo-500 ml-auto flex items-center&quot;&gt;&lt;Clock size={10} className=&quot;mr-1&quot;/&gt;{action.time}h&lt;/span&gt;}
+                                    &lt;/div&gt;
+                                      
+                                      {action.npc &amp;&amp; (
+                                        &lt;div className=&quot;text-xs text-pink-500 flex items-center pt-1&quot;&gt;
+                                          &lt;Heart size={10} className=&quot;mr-1&quot; /&gt;
+                                          {relationships.find(r =&gt; r.id === action.npc)?.name} {action.npcVal &gt; 0 ? '+' : ''}{action.npcVal}
+                                        &lt;/div&gt;
+                                      )}
+                                    &lt;/div&gt;
+                                &lt;/button&gt;
+                            );
+                        })}
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+        {/* Right Column: Log (3 cols) */}
+        &lt;div className=&quot;lg:col-span-3&quot;&gt;
+            &lt;div className=&quot;bg-white p-5 rounded-3xl shadow-sm border border-indigo-50 h-[calc(100vh-140px)] sticky top-24 flex flex-col&quot;&gt;
+                &lt;h3 className=&quot;font-black text-gray-400 text-xs uppercase mb-4 flex items-center tracking-wider&quot;&gt;
+                    &lt;Briefcase size={14} className=&quot;mr-1&quot;/&gt; <font face="NSimSun, monospace"><span lang="zh-CN">冒險日誌</span></font>
+                &lt;/h3&gt;
+                &lt;div className=&quot;flex-1 overflow-y-auto text-sm space-y-3 pr-2 custom-scrollbar&quot;&gt;
+                {logs.length === 0 &amp;&amp; &lt;p className=&quot;text-gray-400 italic text-center mt-10&quot;&gt;<font face="NSimSun, monospace"><span lang="zh-CN">冒險即將開始</span></font>...&lt;/p&gt;}
+                {logs.map((log, i) =&gt; (
+                    &lt;div key={i} className=&quot;bg-gray-50 p-3 rounded-xl text-gray-600 border border-gray-100 text-xs leading-relaxed animate-fade-in&quot;&gt;
+                        {log}
+                    &lt;/div&gt;
+                ))}
+                &lt;div ref={logsEndRef} /&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+
+      &lt;/div&gt;
+
+      {/* Random Event Popup Overlay */}
+      {popup &amp;&amp; (
+        &lt;div className=&quot;fixed inset-0 bg-indigo-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4&quot;&gt;
+            &lt;div className=&quot;bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-bounce-in border-4 border-white&quot;&gt;
+                &lt;div className=&quot;bg-yellow-400 p-6 text-white font-black text-xl flex items-center justify-center shadow-inner&quot;&gt;
+                    &lt;span className=&quot;mr-2 bg-white/20 p-2 rounded-full&quot;&gt;{popup.icon || &lt;AlertTriangle /&gt;}&lt;/span&gt;
+                    {popup.title}
+                &lt;/div&gt;
+                &lt;div className=&quot;p-8&quot;&gt;
+                    &lt;p className=&quot;text-gray-600 text-lg mb-8 font-medium text-center leading-relaxed&quot;&gt;{popup.desc}&lt;/p&gt;
+                    &lt;div className=&quot;space-y-3&quot;&gt;
+                        {popup.choices.map((choice, idx) =&gt; (
+                            &lt;button
+                                key={idx}
+                                onClick={() =&gt; handleEventChoice(choice)}
+                                className=&quot;w-full bg-gray-50 hover:bg-indigo-50 text-gray-800 hover:text-indigo-700 font-bold py-4 px-6 rounded-2xl transition border-2 border-gray-100 hover:border-indigo-200 shadow-sm hover:shadow-md text-left&quot;
+                            &gt;
+                                {choice.text}
+                            &lt;/button&gt;
+                        ))}
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/div&gt;
+        &lt;/div&gt;
+      )}
+
+    &lt;/div&gt;
+  );
+}
+
+// Sub-component for Progress Bars
+function StatBar({ icon, label, value, color, track, max }) {
+  const percentage = Math.min(100, Math.max(0, (value / max) * 100));
+  return (
+    &lt;div className=&quot;bg-white border border-gray-100 rounded-xl p-2 flex flex-col justify-center shadow-sm&quot;&gt;
+      &lt;div className=&quot;flex items-center justify-between mb-1&quot;&gt;
+        &lt;div className=&quot;flex items-center text-gray-500 text-xs font-bold gap-1&quot;&gt;
+            {icon} {label}
+        &lt;/div&gt;
+        &lt;span className=&quot;text-[10px] font-mono text-gray-400&quot;&gt;{value}&lt;/span&gt;
+      &lt;/div&gt;
+      &lt;div className={`w-full ${track} rounded-full h-1.5`}&gt;
+        &lt;div 
+          className={`h-1.5 rounded-full transition-all duration-500 ${color}`} 
+          style={{ width: `${percentage}%` }}
+        &gt;&lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  );
+}</pre>
+</body>
+</html>
